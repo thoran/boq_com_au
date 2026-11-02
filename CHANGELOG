@@ -1,0 +1,10 @@
+# boq_com_au/CHANGELOG
+
+## 20261103
+
+0.0.0: Log into and out of BOQ Classic Internet Banking.
+
+1. + BoqComAu::Account < WebAccount: initialize(chrome_profile_directory:), login(), shutdown(), username(), password().
+2. + BoqComAu::VERSION
+3. + test/BoqComAu/Account_test.rb
+4. + boq_com_au.gemspec, Gemfile, Rakefile, README.md, LICENSE.
