@@ -2,6 +2,11 @@
 
 ## 20261103
 
+0.0.3: BoqComAu::Account#login is WebAccount's, which waits for the log off link.
+
+1. - BoqComAu::Account#login, #logon
+2. ~ BoqComAu::VERSION: /0.0.2/0.0.3/
+
 0.0.2: BoqComAu::Account#shutdown is WebAccount 0.6.1's, which quits the browser even where logging out fails.
 
 1. - BoqComAu::Account#shutdown

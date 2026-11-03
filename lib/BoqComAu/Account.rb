@@ -28,20 +28,6 @@ module BoqComAu
       @password || raise("No password: it's given as password:.")
     end
 
-    def login(username: nil, password: nil)
-      @logged_in = false
-      username ||= self.username
-      password ||= self.password
-      driver.attempt do
-        get_login_page
-        enter_username(username)
-        enter_password(password)
-        login_page_submit_button.click
-      end
-      @logged_in = driver_wait.until{!driver.element_present?(:id, 'btnSignIn')}
-    end
-    alias_method :logon, :login
-
     private
 
     def initialize(username: nil, password: nil, chrome_profile_directory: nil, browser: nil, driver_options: nil)
