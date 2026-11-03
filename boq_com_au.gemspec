@@ -38,7 +38,7 @@ Gem::Specification.new do |spec|
 
   spec.dependencies = [
     ['selenium-webdriver', '>= 4.0'],
-    ['webaccount', '>= 0.6.0']
+    ['webaccount', '>= 0.6.1']
   ]
 
   spec.development_dependencies = %w{

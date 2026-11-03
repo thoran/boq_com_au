@@ -42,13 +42,6 @@ module BoqComAu
     end
     alias_method :logon, :login
 
-    # Chrome is quit whether or not logging out succeeds, so as a failed logout doesn't leave a logged-in browser behind.
-    def shutdown
-      logout if logged_in?
-    ensure
-      driver.quit
-    end
-
     private
 
     def initialize(username: nil, password: nil, chrome_profile_directory: nil, browser: nil, driver_options: nil)
