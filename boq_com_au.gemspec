@@ -14,8 +14,8 @@ Gem::Specification.new do |spec|
   spec.name = 'boq_com_au'
   spec.version = BoqComAu::VERSION
 
-  spec.summary = "Log into BOQ Classic Internet Banking via Selenium WebDriver."
-  spec.description = "Log into BOQ Classic Internet Banking with a Customer Access Number and password."
+  spec.summary = "Download transactions from BOQ Classic Internet Banking via Selenium WebDriver."
+  spec.description = "Log into BOQ Classic Internet Banking with a Customer Access Number and password, and export an account's transactions as a CSV file."
 
   spec.author = 'thoran'
   spec.email = 'code@thoran.com'

@@ -2,7 +2,7 @@
 
 ## Description
 
-Log into BOQ Classic Internet Banking (ib.boq.com.au), via Selenium WebDriver and WebAccount.
+Log into BOQ Classic Internet Banking (ib.boq.com.au) and export an account's transactions as a CSV file, via Selenium WebDriver and WebAccount.
 
 myBOQ, BOQ's newer internet banking site, isn't covered.
 
@@ -23,16 +23,25 @@ $ gem install boq_com_au
 
 ## Usage
 
-### Logging in, out, and shutting down
+### Downloading transactions
 ```ruby
   require 'boq_com_au'
 
   boq_account = BoqComAu::Account.new
   boq_account.login
-  boq_account.driver # The logged-in browser.
-  boq_account.logout
+  boq_account.download_transactions(account_number: '12345678')
+  # => "/Users/me/Downloads/12345678_20261103.csv"
   boq_account.shutdown # Logs out if still logged in, then quits Chrome.
 ```
+The account is picked from the list by the digits of its number alone, so `'12345678'` and `'1234 5678'` are the same. Its transactions are those BOQ shows on choosing it, exported with Export All as Comma Delimited Format (CSV).
+
+`download_transactions` waits for the download to finish, and returns the newest CSV file to have appeared in the download directory since Download was clicked. BOQ names it after the account number and the day's date, and Chrome adds a number to that where a file of the name is there already.
+
+Or in one step, logging in, downloading, and shutting down even where the download fails:
+```ruby
+  BoqComAu::Transactions.download_csv_file(account_number: '12345678')
+```
+Any other keyword arguments are passed to `BoqComAu::Account.new`.
 
 ### Credentials
 
@@ -49,13 +58,19 @@ Chrome is started with its automation flags masked. Given a `chrome_profile_dire
 ```ruby
   BoqComAu::Account.new(chrome_profile_directory: '~/path/to/chrome-profile')
 ```
+Chrome downloads into `download_directory`, `~/Downloads` unless given, without asking where, and opens nothing it downloads:
+```ruby
+  BoqComAu::Account.new(download_directory: '~/path/to/statements')
+```
 Passing `browser:` or `driver_options:` to `BoqComAu::Account.new` replaces all of that, as for any WebAccount.
 
 Where BOQ asks for a one-time code after logging on, `login` waits up to 30 seconds for it to be entered in the browser.
 
 ## Limitations
 
-The login page's selectors were taken from the live page. BOQ's ids are generated, so things are found by their labels and text, and a change to the wording of the site will break it.
+The selectors were taken from the live site. BOQ's ids are generated, so things are found by their labels and text, and a change to the wording of the site will break it.
+
+The date range is BOQ's own, as shown on choosing the account; it can't yet be chosen.
 
 The tests cover only what doesn't depend on BOQ's site.
 

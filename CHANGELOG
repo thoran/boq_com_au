@@ -2,6 +2,18 @@
 
 ## 20261103
 
+0.1.0: + BoqComAu::Account#download_transactions, exporting an account's transactions as a CSV file.
+
+1. + BoqComAu::Account::TRANSACTIONS_SELECTORS
+2. + BoqComAu::Account#download_transactions(account_number:): Transaction History, the account chosen by the digits of its number, then Export All as CSV; returns the file downloaded.
+3. + BoqComAu::Account#initialize(download_directory:), #download_directory: Chrome downloads there without asking, and opens nothing.
+4. + BoqComAu::Account#click, #wait_for, #choose_option: a link not displayed is clicked by JavaScript; a select hidden by Chosen is chosen from by its own list, once Chosen has drawn it.
+5. + BoqComAu::Account#newest_csv_filename, #wait_for_download: the file is the newest CSV since Download was clicked, rather than BOQ's name for it, which Chrome numbers where a download of the same day is there already.
+6. + BoqComAu::Transactions.download_csv_file: login, download and shutdown in one, shutting down even where the download fails.
+7. ~ test/BoqComAu/Account_test.rb, + test/BoqComAu/Transactions_test.rb
+8. ~ README.md, boq_com_au.gemspec: downloading transactions.
+9. ~ BoqComAu::VERSION: /0.0.3/0.1.0/
+
 0.0.3: BoqComAu::Account#login is WebAccount's, which waits for the log off link.
 
 1. - BoqComAu::Account#login, #logon
