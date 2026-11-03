@@ -17,7 +17,7 @@ module BoqComAu
       login_page_password_field_selector: {xpath: '//input[@id=//label[normalize-space()="Password"]/@for]'},
       login_page_submit_button_selector: {id: 'btnSignIn'},
       logout_button_selector: {xpath: '//a[contains(translate(normalize-space(), "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "log off")]'},
-      logged_out_xpath: '//input[@id="btnSignIn"]'
+      logged_out_xpath: '//a[normalize-space()="Log On Again"] | //input[@id="btnSignIn"]'
     }
 
     def username

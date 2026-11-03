@@ -2,6 +2,11 @@
 
 ## 20261103
 
+0.0.1: ~ BoqComAu::Account#logout returns once logged off, rather than after a 30 second timeout.
+
+1. ~ BoqComAu::Account::PAGE_SELECTORS[:logged_out_xpath]: + the Log On Again link. The page shown after logging off has no sign-in button, so logged_out? waited for one until it timed out.
+2. ~ BoqComAu::VERSION: /0.0.0/0.0.1/
+
 0.0.0: Log into and out of BOQ Classic Internet Banking.
 
 1. + BoqComAu::Account < WebAccount: initialize(chrome_profile_directory:), login(), shutdown(), username(), password().
