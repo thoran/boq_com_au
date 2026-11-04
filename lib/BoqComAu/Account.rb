@@ -10,7 +10,9 @@
 # 6. Chrome is started with its automation flags masked; and, given a chrome_profile_directory, with that profile, kept between runs, so as the bank sees a returning browser rather than a fresh automated one. It downloads into download_directory without asking, and opens nothing it downloads.
 # 7. A username or password not given stops login, saying which is missing.
 # 8. BOQ names the exported file after the account number and the date, as 12345678_20261103.csv, and Chrome numbers a second download of the same name; so the newest CSV file to appear in download_directory once Download is clicked is taken to be it. Chrome names a download in progress .crdownload, so a CSV file is a finished one.
+# 9. Dates are BOQ's own, as shown on choosing the account, unless a period or a date is given; then they're set under Advanced Search and searched on before exporting.
 
+require 'date'
 require 'webaccount'
 
 module BoqComAu
@@ -27,6 +29,9 @@ module BoqComAu
     TRANSACTIONS_SELECTORS = {
       transaction_history_link: {xpath: '//a[normalize-space()="Transaction History"]'},
       account_select_list: {xpath: '//select[option[contains(., "Select one of the Accounts")]]'},
+      advanced_search_link: {xpath: '//a[normalize-space()="Advanced Search"]'},
+      text_fields: {xpath: '//input[@type="text"]'},
+      search_link: {xpath: '//a[normalize-space()="Search"]'},
       export_all_link: {xpath: '//a[normalize-space()="Export All"]'},
       export_format_select_list: {xpath: '//select[option[contains(., "Comma Delimited Format (CSV)")]]'},
       download_button: {xpath: '//*[self::a or self::button][normalize-space()="Download"] | //input[@value="Download"]'}
@@ -41,10 +46,15 @@ module BoqComAu
       @password || raise("No password: it's given as password:.")
     end
 
-    # Returns the name of the CSV file downloaded.
-    def download_transactions(account_number:)
+    # period is :all, the last year, or :last_month. Without it, from_date and to_date, either of which defaults to a year ago and today respectively where the other is given. Returns the name of the CSV file downloaded.
+    def download_transactions(account_number:, period: nil, from_date: nil, to_date: nil)
+      from_date, to_date = dates(period: period, from_date: from_date, to_date: to_date)
       get_transactions_page
       select_bank_account(account_number)
+      if from_date
+        enter_dates(from_date: from_date, to_date: to_date)
+        search
+      end
       export_csv
     end
 
@@ -88,8 +98,20 @@ module BoqComAu
       end
     end
 
+    def stale?(element)
+      element.displayed?
+      false
+    rescue Selenium::WebDriver::Error::StaleElementReferenceError
+      true
+    end
+
     def wait_for(selector)
       driver_wait.until{driver.find_elements(*selector.first).any?(&:displayed?)}
+    end
+
+    # Dates are set by JavaScript, so as a date picker doesn't open over the fields.
+    def set_value(element, value)
+      driver.execute_script("arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('change', {bubbles: true}));", element, value)
     end
 
     def chosen_list(select_element)
@@ -108,6 +130,31 @@ module BoqComAu
       end
       option&.click
       option
+    end
+
+    # dates
+
+    def last_month_start_date
+      Date.today.prev_month - (Date.today.prev_month.day - 1)
+    end
+
+    def last_month_finish_date
+      Date.today - Date.today.day
+    end
+
+    # The from and to dates of the period, or of the dates given; nil and nil where neither is given, BOQ's own dates being used.
+    def dates(period:, from_date:, to_date:)
+      case period
+      when :all then [Date.today.prev_year, Date.today]
+      when :last_month then [last_month_start_date, last_month_finish_date]
+      when nil then (from_date || to_date) ? [from_date || Date.today.prev_year, to_date || Date.today] : [nil, nil]
+      else raise ArgumentError, "Unknown period #{period.inspect}: it's :all or :last_month."
+      end
+    end
+
+    def formatted_date(date)
+      date = Date.parse(date) if date.is_a?(String)
+      date.strftime('%d/%m/%Y')
     end
 
     # downloads
@@ -134,6 +181,31 @@ module BoqComAu
       unless choose_option(find(TRANSACTIONS_SELECTORS[:account_select_list])){|text| text.delete('^0-9').include?(digits)}
         raise "Can't find account #{account_number} in the account list."
       end
+      wait_for(TRANSACTIONS_SELECTORS[:export_all_link])
+    end
+
+    # The from and to fields are the two displayed text fields holding a date, as BOQ fills them in. Hidden ones are the form before Advanced Search has redrawn it.
+    def date_fields
+      driver.find_elements(*TRANSACTIONS_SELECTORS[:text_fields].first).select{|field| field.displayed? && field.attribute('value').to_s.match?(%r{\A\d\d/\d\d/\d{4}\z})}
+    rescue Selenium::WebDriver::Error::StaleElementReferenceError
+      []
+    end
+
+    def enter_dates(from_date:, to_date:)
+      click(TRANSACTIONS_SELECTORS[:advanced_search_link])
+      from_date_field, to_date_field = driver_wait.until{fields = date_fields; fields if fields.size >= 2}
+      set_value(from_date_field, formatted_date(from_date))
+      set_value(to_date_field, formatted_date(to_date))
+      unless [from_date_field, to_date_field].map{|field| field.attribute('value')} == [formatted_date(from_date), formatted_date(to_date)]
+        raise "The dates #{formatted_date(from_date)} to #{formatted_date(to_date)} didn't take."
+      end
+    end
+
+    # Export All is already there before the search, and is replaced when the results are, so the old link is waited out first; otherwise it'd export what was there before.
+    def search
+      export_all_link = driver.find_elements(*TRANSACTIONS_SELECTORS[:export_all_link].first).first
+      click(TRANSACTIONS_SELECTORS[:search_link])
+      driver_wait.until{stale?(export_all_link)} if export_all_link
       wait_for(TRANSACTIONS_SELECTORS[:export_all_link])
     end
 

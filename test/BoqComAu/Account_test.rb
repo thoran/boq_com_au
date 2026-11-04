@@ -5,6 +5,7 @@
 
 require_relative '../../lib/boq_com_au'
 
+require 'date'
 require 'minitest/autorun'
 require 'minitest-spec-context'
 require 'tmpdir'
@@ -38,12 +39,12 @@ describe BoqComAu::Account do
     link
   end
 
-  # Finds the elements by id given, though only after the number of looks given in drawn_after, as for a list Chosen hasn't drawn yet.
-  def stand_in_driver(elements_by_id: {}, drawn_after: 0)
+  # Finds the elements by id given, and otherwise those given in elements; though only after the number of looks given in drawn_after, as for a list Chosen hasn't drawn yet.
+  def stand_in_driver(elements_by_id: {}, elements: [], drawn_after: 0)
     driver = Object.new
     looks = 0
     driver.define_singleton_method(:attempt){|&block| block.call(self)}
-    driver.define_singleton_method(:find_elements){|*, **by| (looks += 1) > drawn_after ? [elements_by_id[by[:id]]].compact : []}
+    driver.define_singleton_method(:find_elements){|*, **by| (looks += 1) > drawn_after ? (by[:id] ? [elements_by_id[by[:id]]].compact : elements) : []}
     driver.define_singleton_method(:element_present?){|*| true}
     driver.define_singleton_method(:execute_script){|script, *args| (@scripts ||= []) << [script, *args]}
     driver.define_singleton_method(:scripts){@scripts || []}
@@ -97,6 +98,28 @@ describe BoqComAu::Account do
     end
   end
 
+  describe "#download_transactions" do
+    def account_recording_steps
+      account = account_with_driver(stand_in_driver)
+      steps = []
+      %i{get_transactions_page select_bank_account search export_csv}.each{|step| account.define_singleton_method(step){|*| steps << step}}
+      account.define_singleton_method(:enter_dates){|from_date:, to_date:| steps << [:enter_dates, from_date, to_date]}
+      [account, steps]
+    end
+
+    it "uses BOQ's own dates where neither a period nor a date is given" do
+      account, steps = account_recording_steps
+      account.download_transactions(account_number: '12345678')
+      _(steps).must_equal(%i{get_transactions_page select_bank_account export_csv})
+    end
+
+    it "sets the dates and searches on them before exporting where they're given" do
+      account, steps = account_recording_steps
+      account.download_transactions(account_number: '12345678', from_date: '2026-10-01', to_date: '2026-10-31')
+      _(steps).must_equal([:get_transactions_page, :select_bank_account, [:enter_dates, '2026-10-01', '2026-10-31'], :search, :export_csv])
+    end
+  end
+
   describe "#default_driver_options" do
     it "masks Chrome's automation flags, leaving the profile to Chrome where none is given" do
       options = BoqComAu::Account.new.send(:default_driver_options)
@@ -145,6 +168,43 @@ describe BoqComAu::Account do
       account.define_singleton_method(:find){|*| links.shift}
       account.send(:click, {xpath: '//a'})
       _(new_link.clicked?).must_equal(true)
+    end
+  end
+
+  describe "#dates" do
+    def dates(**args)
+      BoqComAu::Account.new.send(:dates, **{period: nil, from_date: nil, to_date: nil}.merge(args))
+    end
+
+    it "is the last year for :all" do
+      _(dates(period: :all)).must_equal([Date.today.prev_year, Date.today])
+    end
+
+    it "is last month for :last_month" do
+      today = Date.today
+      _(dates(period: :last_month)).must_equal([Date.new(today.prev_month.year, today.prev_month.month, 1), Date.new(today.year, today.month, 1) - 1])
+    end
+
+    it "is the dates given, defaulting the other to a year ago or today" do
+      _(dates(from_date: '2026-01-01', to_date: '2026-02-01')).must_equal(['2026-01-01', '2026-02-01'])
+      _(dates(from_date: '2026-01-01')).must_equal(['2026-01-01', Date.today])
+      _(dates(to_date: '2026-02-01')).must_equal([Date.today.prev_year, '2026-02-01'])
+    end
+
+    it "is none where neither a period nor a date is given" do
+      _(dates).must_equal([nil, nil])
+    end
+
+    it "refuses a period it doesn't know" do
+      _{dates(period: :fortnight)}.must_raise(ArgumentError)
+    end
+  end
+
+  describe "#formatted_date" do
+    it "is day/month/year, from a Date or a String" do
+      account = BoqComAu::Account.new
+      _(account.send(:formatted_date, Date.new(2026, 3, 4))).must_equal('04/03/2026')
+      _(account.send(:formatted_date, '2026-03-04')).must_equal('04/03/2026')
     end
   end
 
@@ -207,6 +267,59 @@ describe BoqComAu::Account do
       account, _opener, options = account_with_accounts('Everyday 1111 2222')
       _{account.send(:select_bank_account, '...')}.must_raise(ArgumentError)
       _(options.map(&:clicked?)).must_equal([false])
+    end
+  end
+
+  describe "#enter_dates" do
+    def stand_in_date_field(value, displayed: true)
+      field = Object.new
+      field.instance_variable_set(:@value, value)
+      field.define_singleton_method(:displayed?){displayed}
+      field.define_singleton_method(:attribute){|name| @value if name == 'value'}
+      field.define_singleton_method(:value=){|value| @value = value}
+      field
+    end
+
+    # A driver whose set_value() sets the field, or, where the page throws the value away, doesn't.
+    def account_with_date_fields(fields, taking: true)
+      driver = stand_in_driver(elements: fields)
+      driver.define_singleton_method(:execute_script){|script, element = nil, value = nil| element.value = value if taking && element.respond_to?(:value=)}
+      account = account_with_driver(driver)
+      account.define_singleton_method(:click){|*| true}
+      account
+    end
+
+    it "sets the displayed date fields, leaving the hidden ones of the form before it was redrawn" do
+      hidden_from, hidden_to = stand_in_date_field('28/10/2026', displayed: false), stand_in_date_field('03/11/2026', displayed: false)
+      from, to = stand_in_date_field('28/10/2026'), stand_in_date_field('03/11/2026')
+      account = account_with_date_fields([hidden_from, hidden_to, from, to])
+      account.send(:enter_dates, from_date: Date.new(2026, 10, 1), to_date: Date.new(2026, 10, 31))
+      _([from, to].map{|field| field.attribute('value')}).must_equal(['01/10/2026', '31/10/2026'])
+      _([hidden_from, hidden_to].map{|field| field.attribute('value')}).must_equal(['28/10/2026', '03/11/2026'])
+    end
+
+    it "says so where the dates didn't take, rather than searching another range" do
+      account = account_with_date_fields([stand_in_date_field('28/10/2026'), stand_in_date_field('03/11/2026')], taking: false)
+      error = _{account.send(:enter_dates, from_date: Date.new(2026, 10, 1), to_date: Date.new(2026, 10, 31))}.must_raise(RuntimeError)
+      _(error.message).must_include('01/10/2026 to 31/10/2026')
+    end
+  end
+
+  describe "#search" do
+    it "waits for the results to replace the Export All link that was there before the search" do
+      old_export_all_link = stand_in_link
+      account = account_with_driver(stand_in_driver(elements: [old_export_all_link]))
+      account.define_singleton_method(:click){|*| old_export_all_link.stale!}
+      account.define_singleton_method(:wait_for){|*| true}
+      account.send(:search)
+      _(account.send(:stale?, old_export_all_link)).must_equal(true)
+    end
+
+    it "doesn't wait to see a link replaced where there was none" do
+      account = account_with_driver(stand_in_driver(elements: []))
+      account.define_singleton_method(:click){|*| true}
+      account.define_singleton_method(:wait_for){|*| true}
+      _(account.send(:search)).must_equal(true)
     end
   end
 end

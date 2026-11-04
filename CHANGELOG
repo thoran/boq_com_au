@@ -1,5 +1,21 @@
 # boq_com_au/CHANGELOG
 
+## 20261104
+
+0.2.0: + BoqComAu::Account#download_transactions(period:, from_date:, to_date:), choosing the dates.
+
+1. + BoqComAu::Account::TRANSACTIONS_SELECTORS: + advanced_search_link, text_fields, search_link.
+2. ~ BoqComAu::Account#download_transactions: + period: (:all, the last year, or :last_month), + from_date:, + to_date:; given any, the dates are set under Advanced Search and searched on before exporting.
+3. + BoqComAu::Account#dates, #last_month_start_date, #last_month_finish_date, #formatted_date
+4. + BoqComAu::Account#enter_dates: the displayed date fields set by JavaScript, so as a date picker doesn't open over them; and stops where the values didn't take, rather than exporting another range.
+5. + BoqComAu::Account#search: waits for the Export All link from before the search to be replaced, else what was there before would be exported.
+6. + BoqComAu::Account#set_value, #stale?, #date_fields
+7. ~ BoqComAu::Transactions.download_csv_file: + period:, from_date:, to_date:
+8. ~ test/BoqComAu/Account_test.rb, test/BoqComAu/Transactions_test.rb
+9. ~ README.md: choosing the dates.
+10. ~ BoqComAu::VERSION: /0.1.0/0.2.0/
+
+
 ## 20261103
 
 0.1.0: + BoqComAu::Account#download_transactions, exporting an account's transactions as a CSV file.
