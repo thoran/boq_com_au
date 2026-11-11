@@ -7,9 +7,9 @@
 # 3. BankFast's links are javascript:void(0) where they aren't the session's key and a callback number, and some, such as Transaction History, are in a menu which is closed. A link which isn't displayed is clicked by JavaScript.
 # 4. Dropdowns are Chosen's, which hides the select and draws its own: <select id>_chosen, opened by its a.chosen-single and chosen from its li.active-result. A select which is displayed is used as it is.
 # 5. Where a one-time code is asked for after logging on, login() waits default_wait_timeout seconds for it to be entered by hand.
-# 6. Chrome is started with its automation flags masked; and, given a chrome_profile_directory, with that profile, kept between runs, so as the bank sees a returning browser rather than a fresh automated one. It downloads into download_directory without asking, and opens nothing it downloads.
+# 6. The browser, Chrome or Firefox, is WebAccount's: given a profile_directory, it's started with that profile, kept between runs, so as the bank sees a returning browser rather than a fresh automated one. It downloads into download_directory without asking, and opens nothing it downloads.
 # 7. A username or password not given stops login, saying which is missing.
-# 8. BOQ names the exported file after the account number and the date, as 12345678_20261103.csv, and Chrome numbers a second download of the same name; so the newest CSV file to appear in download_directory once Download is clicked is taken to be it. Chrome names a download in progress .crdownload, so a CSV file is a finished one.
+# 8. BOQ names the exported file after the account number and the date, as 12345678_20261103.csv, and the browser numbers a second download of the same name; so the newest finished CSV file to appear in download_directory once Download is clicked is taken to be it.
 # 9. Dates are BOQ's own, as shown on choosing the account, unless a period or a date is given; then they're set under Advanced Search and searched on before exporting.
 
 require 'date'
@@ -37,7 +37,6 @@ module BoqComAu
       download_button: {xpath: '//*[self::a or self::button][normalize-space()="Download"] | //input[@value="Download"]'}
     }
 
-    attr_reader :download_directory
     def username
       @username || raise("No username: it's given as username:.")
     end
@@ -60,59 +59,11 @@ module BoqComAu
 
     private
 
-    def initialize(username: nil, password: nil, chrome_profile_directory: nil, download_directory: File.join('~', 'Downloads'), browser: nil, driver_options: nil)
-      @chrome_profile_directory = chrome_profile_directory && File.expand_path(chrome_profile_directory)
-      @download_directory = File.expand_path(download_directory)
-      super(
-        username: username, password: password,
-        browser: browser, driver_options: driver_options,
-        login_page_url: PAGE_SELECTORS[:login_page_url],
-        login_page_username_field_selector: PAGE_SELECTORS[:login_page_username_field_selector],
-        login_page_password_field_selector: PAGE_SELECTORS[:login_page_password_field_selector],
-        login_page_submit_button_selector: PAGE_SELECTORS[:login_page_submit_button_selector],
-        logout_button_selector: PAGE_SELECTORS[:logout_button_selector],
-        logged_out_xpath: PAGE_SELECTORS[:logged_out_xpath],
-      )
-    end
-
-    # driver construction
-
-    def default_driver_options
-      return unless browser == :chrome
-      Selenium::WebDriver::Chrome::Options.new.tap do |o|
-        o.add_argument("--user-data-dir=#{@chrome_profile_directory}") if @chrome_profile_directory
-        o.add_argument('--disable-blink-features=AutomationControlled')
-        o.exclude_switches << 'enable-automation'
-        o.add_preference(:credentials_enable_service, false)
-        o.add_preference(:download, default_directory: @download_directory, prompt_for_download: false, directory_upgrade: true, extensions_to_open: '')
-      end
+    def initialize(username: nil, password: nil, **web_account_args)
+      super(username: username, password: password, **web_account_args, **PAGE_SELECTORS)
     end
 
     # page interaction
-
-    # Found afresh on each attempt, so as an element replaced by a redrawn page is retried rather than ending in StaleElementReferenceError.
-    def click(selector)
-      driver.attempt do
-        element = find(selector)
-        element.displayed? ? element.click : driver.execute_script('arguments[0].click();', element)
-      end
-    end
-
-    def stale?(element)
-      element.displayed?
-      false
-    rescue Selenium::WebDriver::Error::StaleElementReferenceError
-      true
-    end
-
-    def wait_for(selector)
-      driver_wait.until{driver.find_elements(*selector.first).any?(&:displayed?)}
-    end
-
-    # Dates are set by JavaScript, so as a date picker doesn't open over the fields.
-    def set_value(element, value)
-      driver.execute_script("arguments[0].value = arguments[1]; arguments[0].dispatchEvent(new Event('change', {bubbles: true}));", element, value)
-    end
 
     def chosen_list(select_element)
       driver.find_elements(id: "#{select_element.attribute('id')}_chosen").first
@@ -155,16 +106,6 @@ module BoqComAu
     def formatted_date(date)
       date = Date.parse(date) if date.is_a?(String)
       date.strftime('%d/%m/%Y')
-    end
-
-    # downloads
-
-    def newest_csv_filename(since:)
-      Dir.glob(File.join(@download_directory, '*.csv')).select{|filename| File.mtime(filename) >= since}.max_by{|filename| File.mtime(filename)}
-    end
-
-    def wait_for_download(since:)
-      driver_wait.until{newest_csv_filename(since: since)}
     end
 
     # transactions

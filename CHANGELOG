@@ -1,5 +1,19 @@
 # boq_com_au/CHANGELOG
 
+## 20261111
+
+0.3.0: ~ BoqComAu::Account uses WebAccount 0.7.0's browser options and download waiting, so as it runs in Firefox as well as Chrome; /chrome_profile_directory:/profile_directory:/.
+
+1. ~ boq_com_au.gemspec: webaccount /'>= 0.6.1'/'~> 0.7'/
+2. ~ BoqComAu::Account#initialize: /chrome_profile_directory:/profile_directory:/; download_directory:, browser: and driver_options: go to WebAccount, as do headless:, window_size: and user_agent:.
+3. - BoqComAu::Account#default_driver_options, WebAccount's giving Chrome's options or Firefox's.
+4. - BoqComAu::Account#download_directory, #click, #stale?, #wait_for, #set_value, WebAccount's doing the same.
+5. - BoqComAu::Account#newest_csv_filename, #wait_for_download, WebAccount's #wait_for_download waiting longer, and past Firefox's downloads in progress as well as Chrome's.
+6. ~ test/BoqComAu/Account_test.rb: The tests of what's now WebAccount's are dropped; the options for Chrome and for Firefox, and profile_directory: in place of chrome_profile_directory:, are tested.
+7. ~ README.md: Firefox and profile_directory:.
+8. ~ BoqComAu::VERSION: /0.2.0/0.3.0/
+
+
 ## 20261104
 
 0.2.0: + BoqComAu::Account#download_transactions(period:, from_date:, to_date:), choosing the dates.

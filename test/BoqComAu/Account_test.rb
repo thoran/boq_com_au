@@ -8,7 +8,6 @@ require_relative '../../lib/boq_com_au'
 require 'date'
 require 'minitest/autorun'
 require 'minitest-spec-context'
-require 'tmpdir'
 
 describe BoqComAu::Account do
   def stand_in_element(text: '', displayed: true, id: nil)
@@ -68,11 +67,6 @@ describe BoqComAu::Account do
     [account, opener, options]
   end
 
-  def touch(filename, mtime)
-    File.write(filename, '')
-    File.utime(mtime, mtime, filename)
-  end
-
   describe "#username and #password" do
     it "are those given" do
       account = BoqComAu::Account.new(username: 'customer', password: 'secret')
@@ -120,54 +114,33 @@ describe BoqComAu::Account do
     end
   end
 
-  describe "#default_driver_options" do
-    it "masks Chrome's automation flags, leaving the profile to Chrome where none is given" do
-      options = BoqComAu::Account.new.send(:default_driver_options)
-      _(options.args).must_include('--disable-blink-features=AutomationControlled')
-      _(options.exclude_switches).must_include('enable-automation')
-      _(options.args.grep(/--user-data-dir/)).must_be_empty
-    end
-
-    it "starts Chrome with the profile given, expanded" do
-      options = BoqComAu::Account.new(chrome_profile_directory: '~/profiles/boq').send(:default_driver_options)
+  describe "the browser" do
+    it "is Chrome, started with the profile given, expanded, downloading into the download directory given" do
+      options = BoqComAu::Account.new(profile_directory: '~/profiles/boq', download_directory: '~/statements').send(:default_driver_options)
+      _(options).must_be_kind_of(Selenium::WebDriver::Chrome::Options)
       _(options.args).must_include("--user-data-dir=#{File.expand_path('~/profiles/boq')}")
+      _(options.prefs[:download][:default_directory]).must_equal(File.expand_path('~/statements'))
     end
 
-    it "downloads into the download directory without asking, opening nothing" do
-      options = BoqComAu::Account.new(download_directory: '~/statements').send(:default_driver_options)
-      download = options.prefs[:download]
-      _(download[:default_directory]).must_equal(File.expand_path('~/statements'))
-      _(download[:prompt_for_download]).must_equal(false)
-      _(download[:extensions_to_open]).must_equal('')
+    it "is Firefox where asked for, started with the profile given, downloading into the download directory given" do
+      options = BoqComAu::Account.new(browser: :firefox, profile_directory: '~/profiles/boq', download_directory: '~/statements').send(:default_driver_options)
+      _(options).must_be_kind_of(Selenium::WebDriver::Firefox::Options)
+      _(options.args).must_equal(['-profile', File.expand_path('~/profiles/boq')])
+      _(options.prefs['browser.download.dir']).must_equal(File.expand_path('~/statements'))
     end
 
     it "downloads into ~/Downloads where no directory is given" do
       _(BoqComAu::Account.new.download_directory).must_equal(File.expand_path('~/Downloads'))
     end
 
-    it "is nil for browsers other than Chrome" do
-      _(BoqComAu::Account.new(browser: :firefox).send(:default_driver_options)).must_be_nil
+    it "takes the profile as profile_directory:, no longer as chrome_profile_directory:" do
+      _{BoqComAu::Account.new(chrome_profile_directory: '~/profiles/boq')}.must_raise(ArgumentError)
     end
-  end
 
-  describe "#click" do
-    it "finds the element afresh where the one found first has been redrawn" do
-      old_link, new_link = stand_in_link, stand_in_link
-      old_link.stale!
-      driver = stand_in_driver
-      attempts = 0
-      driver.define_singleton_method(:attempt) do |&block|
-        block.call(self)
-      rescue Selenium::WebDriver::Error::StaleElementReferenceError
-        attempts += 1
-        retry if attempts < 3
-        raise
-      end
-      account = account_with_driver(driver)
-      links = [old_link, new_link]
-      account.define_singleton_method(:find){|*| links.shift}
-      account.send(:click, {xpath: '//a'})
-      _(new_link.clicked?).must_equal(true)
+    it "logs in to BOQ, whatever else is passed to WebAccount" do
+      account = BoqComAu::Account.new(headless: true, window_size: [1280, 800])
+      _(account.send(:username_field_selector)).must_equal(BoqComAu::Account::PAGE_SELECTORS[:login_page_username_field_selector])
+      _(account.send(:logout_button_selector)).must_equal(BoqComAu::Account::PAGE_SELECTORS[:logout_button_selector])
     end
   end
 
@@ -205,28 +178,6 @@ describe BoqComAu::Account do
       account = BoqComAu::Account.new
       _(account.send(:formatted_date, Date.new(2026, 3, 4))).must_equal('04/03/2026')
       _(account.send(:formatted_date, '2026-03-04')).must_equal('04/03/2026')
-    end
-  end
-
-  describe "#newest_csv_filename" do
-    it "is the newest CSV file in the download directory since the time given" do
-      Dir.mktmpdir do |directory|
-        since = Time.now - 60
-        touch(File.join(directory, 'old.csv'), since - 60)
-        touch(File.join(directory, 'new.csv'), since + 10)
-        touch(File.join(directory, 'newer.csv'), since + 20)
-        touch(File.join(directory, 'newest.csv.crdownload'), since + 30)
-        account = BoqComAu::Account.new(download_directory: directory)
-        _(account.send(:newest_csv_filename, since: since)).must_equal(File.join(directory, 'newer.csv'))
-      end
-    end
-
-    it "is nil where none has appeared since" do
-      Dir.mktmpdir do |directory|
-        since = Time.now
-        touch(File.join(directory, 'old.csv'), since - 60)
-        _(BoqComAu::Account.new(download_directory: directory).send(:newest_csv_filename, since: since)).must_be_nil
-      end
     end
   end
 
