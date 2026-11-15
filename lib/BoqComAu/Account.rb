@@ -59,10 +59,6 @@ module BoqComAu
 
     private
 
-    def initialize(username: nil, password: nil, **web_account_args)
-      super(username: username, password: password, **web_account_args, **PAGE_SELECTORS)
-    end
-
     # page interaction
 
     def chosen_list(select_element)

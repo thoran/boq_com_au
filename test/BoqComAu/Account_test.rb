@@ -137,10 +137,17 @@ describe BoqComAu::Account do
       _{BoqComAu::Account.new(chrome_profile_directory: '~/profiles/boq')}.must_raise(ArgumentError)
     end
 
-    it "logs in to BOQ, whatever else is passed to WebAccount" do
-      account = BoqComAu::Account.new(headless: true, window_size: [1280, 800])
-      _(account.send(:username_field_selector)).must_equal(BoqComAu::Account::PAGE_SELECTORS[:login_page_username_field_selector])
+    it "uses BOQ's selectors where none is given" do
+      account = BoqComAu::Account.new
+      _(account.send(:login_page_username_field_selector)).must_equal(BoqComAu::Account::PAGE_SELECTORS[:login_page_username_field_selector])
       _(account.send(:logout_button_selector)).must_equal(BoqComAu::Account::PAGE_SELECTORS[:logout_button_selector])
+    end
+
+    it "logs in where told to, a keyword winning over BOQ's selector" do
+      account = BoqComAu::Account.new(login_page_url: 'https://test.example.com/logon', logout_button_selector: {id: 'logoff'})
+      _(account.send(:login_page_url)).must_equal('https://test.example.com/logon')
+      _(account.send(:logout_button_selector)).must_equal({id: 'logoff'})
+      _(account.send(:login_page_username_field_selector)).must_equal(BoqComAu::Account::PAGE_SELECTORS[:login_page_username_field_selector])
     end
   end
 

@@ -1,5 +1,16 @@
 # boq_com_au/CHANGELOG
 
+## 20261115
+
+0.4.0: - BoqComAu::Account#initialize: Now uses superclass WebAccount.
+
+1. ~ boq_com_au.gemspec: webaccount /'~> 0.7'/'~> 0.8'/
+2. - BoqComAu::Account#initialize, WebAccount's reading PAGE_SELECTORS itself.
+3. ~ test/BoqComAu/Account_test.rb: A login page URL and a selector given win over BOQ's, the rest staying BOQ's; /logs in to BOQ, whatever else is passed to WebAccount/uses BOQ's selectors where none is given/.
+4. ~ README.md: The keywords of new win over PAGE_SELECTORS.
+5. ~ BoqComAu::VERSION: /0.3.0/0.4.0/
+
+
 ## 20261111
 
 0.3.0: ~ BoqComAu::Account uses WebAccount 0.7.0's browser options and download waiting, so as it runs in Firefox as well as Chrome; /chrome_profile_directory:/profile_directory:/.
