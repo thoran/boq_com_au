@@ -58,7 +58,7 @@ The username is the Customer Access Number. It and the password are given, or se
   boq_account = BoqComAu::Account.new(username: customer_access_number, password: password)
   boq_account.username, boq_account.password = customer_access_number, password
 ```
-Where either is missing, `login` stops, saying which.
+Where either is missing, `login` raises ArgumentError before starting the browser, naming every one missing.
 
 ### The browser
 

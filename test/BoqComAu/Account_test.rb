@@ -81,14 +81,31 @@ describe BoqComAu::Account do
       _(account.password).must_equal('secret')
     end
 
-    it "say which is missing where they're not given, rather than reading the environment" do
+    it "are nil where they're not given, rather than read from the environment" do
       ENV['BOQ_USERNAME'], ENV['BOQ_PASSWORD'] = 'customer', 'secret'
       account = BoqComAu::Account.new
-      _(_{account.username}.must_raise(RuntimeError).message).must_include('No username')
-      _(_{account.password}.must_raise(RuntimeError).message).must_include('No password')
+      _(account.username).must_be_nil
+      _(account.password).must_be_nil
     ensure
       ENV.delete('BOQ_USERNAME')
       ENV.delete('BOQ_PASSWORD')
+    end
+  end
+
+  describe "#login" do
+    it "names the one missing, before starting the browser" do
+      account = BoqComAu::Account.new(username: 'customer')
+      _(_{account.login}.must_raise(ArgumentError).message).must_equal('password is missing.')
+      _(account.instance_variable_get(:@driver)).must_be_nil
+    end
+
+    it "names both where both are missing" do
+      _(_{BoqComAu::Account.new.login}.must_raise(ArgumentError).message).must_equal('username, password are missing.')
+    end
+
+    it "takes either given to login itself as given" do
+      _(_{BoqComAu::Account.new(username: 'customer').login(password: nil)}.must_raise(ArgumentError).message).must_equal('password is missing.')
+      _(_{BoqComAu::Account.new.login(username: 'customer')}.must_raise(ArgumentError).message).must_equal('password is missing.')
     end
   end
 
@@ -111,6 +128,12 @@ describe BoqComAu::Account do
       account, steps = account_recording_steps
       account.download_transactions(account_number: '12345678', from_date: '2026-10-01', to_date: '2026-10-31')
       _(steps).must_equal([:get_transactions_page, :select_bank_account, [:enter_dates, '2026-10-01', '2026-10-31'], :search, :export_csv])
+    end
+
+    it "names a missing account number, before going to the transactions page" do
+      account, steps = account_recording_steps
+      _(_{account.download_transactions(account_number: nil)}.must_raise(ArgumentError).message).must_equal('account_number is missing.')
+      _(steps).must_be_empty
     end
   end
 

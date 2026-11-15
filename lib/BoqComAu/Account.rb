@@ -5,10 +5,10 @@
 # 1. The login page's ids and names (id4, 8, ...) appear to be generated, so the fields are found by their labels.
 # 2. The ids and names after login (id121, 74, ...) appear to be generated too, so TRANSACTIONS_SELECTORS find things by their text.
 # 3. BankFast's links are javascript:void(0) where they aren't the session's key and a callback number, and some, such as Transaction History, are in a menu which is closed. A link which isn't displayed is clicked by JavaScript.
-# 4. Dropdowns are Chosen's, which hides the select and draws its own: <select id>_chosen, opened by its a.chosen-single and chosen from its li.active-result. A select which is displayed is used as it is.
+# 4. Dropdowns are drawn by Chosen, a JavaScript library, which hides the select and draws its own: <select id>_chosen, opened by its a.chosen-single and chosen from its li.active-result. A select which is displayed is used as it is.
 # 5. Where a one-time code is asked for after logging on, login() waits default_wait_timeout seconds for it to be entered by hand.
 # 6. The browser, Chrome or Firefox, is WebAccount's: given a profile_directory, it's started with that profile, kept between runs, so as the bank sees a returning browser rather than a fresh automated one. It downloads into download_directory without asking, and opens nothing it downloads.
-# 7. A username or password not given stops login, saying which is missing.
+# 7. A username or password not given stops login before the browser is started, naming every one missing.
 # 8. BOQ names the exported file after the account number and the date, as 12345678_20261103.csv, and the browser numbers a second download of the same name; so the newest finished CSV file to appear in download_directory once Download is clicked is taken to be it.
 # 9. Dates are BOQ's own, as shown on choosing the account, unless a period or a date is given; then they're set under Advanced Search and searched on before exporting.
 
@@ -37,16 +37,14 @@ module BoqComAu
       download_button: {xpath: '//*[self::a or self::button][normalize-space()="Download"] | //input[@value="Download"]'}
     }
 
-    def username
-      @username || raise("No username: it's given as username:.")
-    end
-
-    def password
-      @password || raise("No password: it's given as password:.")
+    def login(username: nil, password: nil)
+      validate_args(username: username || self.username, password: password || self.password)
+      super
     end
 
     # period is :all, the last year, or :last_month. Without it, from_date and to_date, either of which defaults to a year ago and today respectively where the other is given. Returns the name of the CSV file downloaded.
     def download_transactions(account_number:, period: nil, from_date: nil, to_date: nil)
+      validate_args(account_number: account_number)
       from_date, to_date = dates(period: period, from_date: from_date, to_date: to_date)
       get_transactions_page
       select_bank_account(account_number)
@@ -58,6 +56,17 @@ module BoqComAu
     end
 
     private
+
+    def validate_args(args)
+      missing_args = []
+      args.each do |arg_name, value|
+        missing_args << arg_name unless value
+      end
+      return if missing_args.empty?
+      aggregate_error = missing_args.join(', ')
+      copula = missing_args.count > 1 ? 'are' : 'is'
+      raise ArgumentError, "#{aggregate_error} #{copula} missing."
+    end
 
     # page interaction
 

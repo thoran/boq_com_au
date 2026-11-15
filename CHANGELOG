@@ -2,6 +2,17 @@
 
 ## 20261115
 
+0.4.1: ~ BoqComAu::Account#login and #download_transactions name every argument missing at once, as an ArgumentError.
+
+1. + BoqComAu::Account#validate_args
+2. + BoqComAu::Account#login: Calls validate_args(username:, password:), then WebAccount#login.
+3. - BoqComAu::Account#username, #password: WebAccount's readers are used, nil where not given.
+4. ~ BoqComAu::Account#download_transactions: Calls validate_args(account_number:).
+5. ~ test/BoqComAu/Account_test.rb: One missing and both missing are named by login, given to new or to login itself; a nil account_number is named by download_transactions; username and password are nil where not given.
+6. ~ README.md, Account.rb's notes: login raises ArgumentError naming every one missing.
+7. ~ Account.rb's notes: Chosen, which draws BOQ's dropdowns, is said to be a JavaScript library, as otherwise it reads as the word "chosen".
+8. ~ BoqComAu::VERSION: /0.4.0/0.4.1/
+
 0.4.0: - BoqComAu::Account#initialize: Now uses superclass WebAccount.
 
 1. ~ boq_com_au.gemspec: webaccount /'~> 0.7'/'~> 0.8'/
