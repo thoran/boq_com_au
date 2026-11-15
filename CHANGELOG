@@ -2,6 +2,14 @@
 
 ## 20261115
 
+0.5.0: ~ BoqComAu::Account::PAGE_SELECTORS: /logged_out_xpath/logged_out_selector/, as WebAccount 0.9.0's.
+
+1. ~ boq_com_au.gemspec: webaccount /'~> 0.8'/'~> 0.9'/
+2. ~ BoqComAu::Account::PAGE_SELECTORS: /logged_out_xpath: '...'/logged_out_selector: {xpath: '...'}/, logged_out_xpath going in WebAccount 0.10.0.
+3. ~ test/BoqComAu/Account_test.rb: The logged-out selector is BOQ's where none is given, and one set after construction wins over it.
+4. ~ README.md: The setters win over PAGE_SELECTORS, as the keywords do.
+5. ~ BoqComAu::VERSION: /0.4.1/0.5.0/
+
 0.4.1: ~ BoqComAu::Account#login and #download_transactions name every argument missing at once, as an ArgumentError.
 
 1. + BoqComAu::Account#validate_args

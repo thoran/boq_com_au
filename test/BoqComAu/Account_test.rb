@@ -164,6 +164,13 @@ describe BoqComAu::Account do
       account = BoqComAu::Account.new
       _(account.send(:login_page_username_field_selector)).must_equal(BoqComAu::Account::PAGE_SELECTORS[:login_page_username_field_selector])
       _(account.send(:logout_button_selector)).must_equal(BoqComAu::Account::PAGE_SELECTORS[:logout_button_selector])
+      _(account.logged_out_selector).must_equal({xpath: '//a[normalize-space()="Log On Again"] | //input[@id="btnSignIn"]'})
+    end
+
+    it "uses a selector set after construction over BOQ's" do
+      account = BoqComAu::Account.new
+      account.logged_out_selector = {id: 'btnLogOn'}
+      _(account.logged_out_selector).must_equal({id: 'btnLogOn'})
     end
 
     it "logs in where told to, a keyword winning over BOQ's selector" do

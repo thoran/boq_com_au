@@ -79,9 +79,10 @@ Where BOQ asks for a one-time code after logging on, `login` waits up to 30 seco
 
 The selectors were taken from the live site. BOQ's ids are generated, so things are found by their labels and text, and a change to the wording of the site will break it.
 
-Each key of `BoqComAu::Account::PAGE_SELECTORS` is also a keyword of `new`, which wins over BOQ's, so as a login page selector which has changed can be given without waiting for a new version:
+Each key of `BoqComAu::Account::PAGE_SELECTORS` is also a keyword of `new`, and has a setter, either of which wins over BOQ's, so as a selector which has changed can be given without waiting for a new version:
 ```ruby
   BoqComAu::Account.new(login_page_submit_button_selector: {id: 'btnLogOn'})
+  boq_account.logged_out_selector = {id: 'btnLogOn'}
 ```
 
 The tests cover only what doesn't depend on BOQ's site.
