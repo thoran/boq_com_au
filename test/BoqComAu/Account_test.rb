@@ -115,6 +115,7 @@ describe BoqComAu::Account do
       steps = []
       %i{get_transactions_page select_bank_account search export_csv}.each{|step| account.define_singleton_method(step){|*| steps << step}}
       account.define_singleton_method(:enter_dates){|from_date:, to_date:| steps << [:enter_dates, from_date, to_date]}
+      account.define_singleton_method(:transactions?){@transactions != false}
       [account, steps]
     end
 
@@ -128,6 +129,13 @@ describe BoqComAu::Account do
       account, steps = account_recording_steps
       account.download_transactions(account_number: '12345678', from_date: '2026-10-01', to_date: '2026-10-31')
       _(steps).must_equal([:get_transactions_page, :select_bank_account, [:enter_dates, '2026-10-01', '2026-10-31'], :search, :export_csv])
+    end
+
+    it "exports nothing, and returns nil, where there are no transactions" do
+      account, steps = account_recording_steps
+      account.instance_variable_set(:@transactions, false)
+      _(account.download_transactions(account_number: '12345678', period: :last_month)).must_be_nil
+      _(steps).must_equal([:get_transactions_page, :select_bank_account, [:enter_dates, *account.send(:dates, period: :last_month, from_date: nil, to_date: nil)], :search])
     end
 
     it "names a missing account number, before going to the transactions page" do
@@ -294,7 +302,7 @@ describe BoqComAu::Account do
   end
 
   describe "#search" do
-    it "waits for the results to replace the Export All link that was there before the search" do
+    it "waits for the results to replace those there before the search, Export All or BOQ's message that there are none" do
       old_export_all_link = stand_in_link
       account = account_with_driver(stand_in_driver(elements: [old_export_all_link]))
       account.define_singleton_method(:click){|*| old_export_all_link.stale!}
@@ -308,6 +316,13 @@ describe BoqComAu::Account do
       account.define_singleton_method(:click){|*| true}
       account.define_singleton_method(:wait_for){|*| true}
       _(account.send(:search)).must_equal(true)
+    end
+  end
+
+  describe "#transactions?" do
+    it "is whether there's an Export All link, BOQ showing its message instead where there are none" do
+      _(account_with_driver(stand_in_driver(elements: [stand_in_element])).send(:transactions?)).must_equal(true)
+      _(account_with_driver(stand_in_driver(elements: [])).send(:transactions?)).must_equal(false)
     end
   end
 end

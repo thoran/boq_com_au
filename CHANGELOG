@@ -2,6 +2,16 @@
 
 ## 20261116
 
+0.5.2: ~ BoqComAu::Account#download_transactions returns nil where there are no transactions, rather than waiting for Export All until it times out.
+
+1. ~ BoqComAu::Account::TRANSACTIONS_SELECTORS: + results, Export All or BOQ's message that there are no transactions.
+2. ~ BoqComAu::Account#select_bank_account, #search: Wait for the results rather than for Export All.
+3. + BoqComAu::Account#transactions?
+4. ~ BoqComAu::Account#download_transactions: Exports only where there are transactions.
+5. ~ test/BoqComAu/Account_test.rb: Nothing is exported, and nil returned, where there are no transactions; transactions? is whether there's an Export All link.
+6. ~ README.md: Where there are no transactions, nil is returned.
+7. ~ BoqComAu::VERSION: /0.5.1/0.5.2/
+
 0.5.1: - BoqComAu::Account#login, #validate_args: Now uses superclass WebAccount.
 
 1. ~ boq_com_au.gemspec: webaccount /'~> 0.9'/'~> 0.10'/

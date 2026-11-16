@@ -43,7 +43,7 @@ Without dates, the transactions are those BOQ shows on choosing the account. Giv
 ```
 Dates are Dates, or Strings `Date.parse` can read. Where only one of `from_date` and `to_date` is given, the other is a year ago or today.
 
-`download_transactions` waits for the download to finish, and returns the newest CSV file to have appeared in the download directory since Download was clicked. BOQ names it after the account number and the day's date, and the browser adds a number to that where a file of the name is there already.
+`download_transactions` waits for the download to finish, and returns the newest CSV file to have appeared in the download directory since Download was clicked. BOQ names it after the account number and the day's date, and the browser adds a number to that where a file of the name is there already. Where there are no transactions in the range, BOQ says so in place of Export All, and nothing is exported: `download_transactions` returns nil.
 
 Or in one step, logging in, downloading, and shutting down even where the download fails:
 ```ruby

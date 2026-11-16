@@ -33,11 +33,12 @@ module BoqComAu
       text_fields: {xpath: '//input[@type="text"]'},
       search_link: {xpath: '//a[normalize-space()="Search"]'},
       export_all_link: {xpath: '//a[normalize-space()="Export All"]'},
+      results: {xpath: '//a[normalize-space()="Export All"] | //*[contains(text(), "There are no transactions that match your search requirements")]'},
       export_format_select_list: {xpath: '//select[option[contains(., "Comma Delimited Format (CSV)")]]'},
       download_button: {xpath: '//*[self::a or self::button][normalize-space()="Download"] | //input[@value="Download"]'}
     }
 
-    # period is :all, the last year, or :last_month. Without it, from_date and to_date, either of which defaults to a year ago and today respectively where the other is given. Returns the name of the CSV file downloaded.
+    # period is :all, the last year, or :last_month. Without it, from_date and to_date, either of which defaults to a year ago and today respectively where the other is given. Returns the name of the CSV file downloaded, or nil where there are no transactions to export.
     def download_transactions(account_number:, period: nil, from_date: nil, to_date: nil)
       validate_args(account_number: account_number)
       from_date, to_date = dates(period: period, from_date: from_date, to_date: to_date)
@@ -47,7 +48,7 @@ module BoqComAu
         enter_dates(from_date: from_date, to_date: to_date)
         search
       end
-      export_csv
+      export_csv if transactions?
     end
 
     private
@@ -111,7 +112,7 @@ module BoqComAu
       unless choose_option(find(TRANSACTIONS_SELECTORS[:account_select_list])){|text| text.delete('^0-9').include?(digits)}
         raise "Can't find account #{account_number} in the account list."
       end
-      wait_for(TRANSACTIONS_SELECTORS[:export_all_link])
+      wait_for(TRANSACTIONS_SELECTORS[:results])
     end
 
     # The from and to fields are the two displayed text fields holding a date, as BOQ fills them in. Hidden ones are the form before Advanced Search has redrawn it.
@@ -131,12 +132,16 @@ module BoqComAu
       end
     end
 
-    # Export All is already there before the search, and is replaced when the results are, so the old link is waited out first; otherwise it'd export what was there before.
+    # The results, Export All or BOQ's message that there are no transactions, are already there before the search, and are replaced when the search's are, so the old ones are waited out first; otherwise it'd export what was there before.
     def search
-      export_all_link = driver.find_elements(*TRANSACTIONS_SELECTORS[:export_all_link].first).first
+      old_results = driver.find_elements(*TRANSACTIONS_SELECTORS[:results].first).first
       click(TRANSACTIONS_SELECTORS[:search_link])
-      driver_wait.until{stale?(export_all_link)} if export_all_link
-      wait_for(TRANSACTIONS_SELECTORS[:export_all_link])
+      driver_wait.until{stale?(old_results)} if old_results
+      wait_for(TRANSACTIONS_SELECTORS[:results])
+    end
+
+    def transactions?
+      driver.find_elements(*TRANSACTIONS_SELECTORS[:export_all_link].first).any?(&:displayed?)
     end
 
     def export_csv
